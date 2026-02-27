@@ -1,0 +1,11 @@
+completed	success	Add Jest testing step to CI workflow	CI workflow	main	push	22463080944	17s	18h
+completed	success	Add ESLint linting step	CI workflow	main	push	22463005331	15s	18h
+completed	success	Add CI workflow	CI workflow	main	push	22462906726	15s	1tkn pipeline start cd-pipeline \
+  -p repo-url=https://github.com/befkir/ci-cd-final-project.git \
+  -p branch=main \
+  -p app-name=counter-service \
+  -w name=pipeline-workspace,emptyDir="" \
+  --use-param-defaults
+8h
+completed	failure	commit message	.github/workflows/workflow.yml	main	push	22462788910	0s	18h
+completed	failure	Initial commit	.github/workflows/workflow.yml	main	push	22461906284	0s	18h

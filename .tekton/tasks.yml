@@ -19,16 +19,9 @@ spec:
         #!/usr/bin/env sh
         set -eu
         echo "Removing all files from ${WORKSPACE_SOURCE_PATH} ..."
-        # Delete any existing contents of the directory if it exists.
-        #
-        # We don't just "rm -rf ${WORKSPACE_SOURCE_PATH}" because ${WORKSPACE_SOURCE_PATH} might be "/"
-        # or the root of a mounted volume.
         if [ -d "${WORKSPACE_SOURCE_PATH}" ] ; then
-          # Delete non-hidden files and directories
           rm -rf "${WORKSPACE_SOURCE_PATH:?}"/*
-          # Delete files and directories starting with . but excluding ..
           rm -rf "${WORKSPACE_SOURCE_PATH}"/.[!.]*
-          # Delete files and directories starting with .. plus any other character
           rm -rf "${WORKSPACE_SOURCE_PATH}"/..?*
         fi
 ---
@@ -48,10 +41,39 @@ spec:
     - name: jest
       image: node:20-alpine
       workingDir: $(workspaces.source.path)
+      securityContext:
+        runAsNonRoot: false
+        runAsUser: 0
       script: |
         #!/bin/sh
         set -e
+        echo "Cleaning node_modules if exists..."
+        rm -rf node_modules
         echo "Installing dependencies..."
-        npm ci
+        npm ci --prefer-offline --no-audit
         echo "Running Jest tests..."
         npm test $(params.args)
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: eslint
+spec:
+  workspaces:
+    - name: source
+  steps:
+    - name: lint
+      image: node:20-alpine
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        runAsNonRoot: false
+        runAsUser: 0
+      script: |
+        #!/bin/sh
+        set -e
+        echo "Cleaning node_modules if exists..."
+        rm -rf node_modules
+        echo "Installing dependencies..."
+        npm ci --prefer-offline --no-audit
+        echo "Running ESLint..."
+        npm run lint

@@ -1,0 +1,81 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: cd-pipeline
+spec:
+  params:
+    - name: repo-url
+      description: The git repository URL
+    - name: branch
+      description: The git branch to clone
+      default: main
+    - name: app-name
+      description: Name of the application
+  workspaces:
+    - name: pipeline-workspace
+  tasks:
+    - name: cleanup
+      taskRef:
+        name: cleanup
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+    
+    - name: git-clone
+      taskRef:
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.branch)
+      workspaces:
+        - name: output
+          workspace: pipeline-workspace
+      runAfter:
+        - cleanup
+    
+    - name: eslint
+      taskRef:
+        name: eslint
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      runAfter:
+        - git-clone
+    
+    - name: jest
+      taskRef:
+        name: jest-test
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      runAfter:
+        - git-clone
+    
+    - name: buildah
+      taskRef:
+        name: buildah
+      params:
+        - name: IMAGE
+          value: "image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/$(params.app-name):latest"
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      runAfter:
+        - eslint
+        - jest
+    
+    - name: deploy
+      taskRef:
+        name: openshift-client
+      params:
+        - name: SCRIPT
+          value: |
+            oc apply -f k8s/deployment.yaml
+            oc apply -f k8s/service.yaml
+      workspaces:
+        - name: manifest-dir
+          workspace: pipeline-workspace
+      runAfter:
+        - buildah
